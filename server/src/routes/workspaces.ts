@@ -3,6 +3,7 @@ import { getAuth } from 'firebase-admin/auth'
 import { authMiddleware } from '../middleware/auth'
 import { requireWorkspaceRole } from '../middleware/rbac'
 import { getWorkspace, createWorkspace, setMemberRole, listUserWorkspaces, createInvite, listInvites, deleteInvite, acceptInvite } from '../services/workspaces'
+import { listWorkspaceAgents } from '../services/agents'
 import { sendInviteEmail } from '../services/email'
 import type { Role } from '../types'
 
@@ -11,6 +12,11 @@ const router = Router()
 router.get('/', authMiddleware, async (req, res) => {
   const workspaces = await listUserWorkspaces(req.user!.uid)
   res.json(workspaces)
+})
+
+router.get('/:workspaceId/agents', authMiddleware, requireWorkspaceRole('Viewer'), async (req, res) => {
+  const agents = await listWorkspaceAgents(req.params.workspaceId)
+  res.json(agents)
 })
 
 router.get('/:workspaceId/members', authMiddleware, async (req, res) => {

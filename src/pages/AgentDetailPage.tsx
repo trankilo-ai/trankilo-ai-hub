@@ -31,10 +31,10 @@ export function AgentDetailPage() {
     try {
       const [a, af, vers, hb, lg] = await Promise.all([
         agentsApi.get(agentId),
-        agentfileApi.get(agentId),
-        agentfileApi.versions(agentId),
-        heartbeatApi.get(agentId),
-        logsApi.get(agentId),
+        agentfileApi.get(agentId).catch(() => ({ content: '' })),
+        agentfileApi.versions(agentId).catch(() => []),
+        heartbeatApi.get(agentId).catch(() => []),
+        logsApi.get(agentId).catch(() => []),
       ])
       setAgent(a)
       setAgentfileContent(af.content)

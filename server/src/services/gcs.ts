@@ -1,18 +1,7 @@
-import { Storage } from '@google-cloud/storage'
-
-let storage: Storage | null = null
-
-function getStorage(): Storage {
-  if (!storage) {
-    storage = new Storage({
-      projectId: process.env.GCS_PROJECT_ID ?? process.env.FIREBASE_PROJECT_ID,
-    })
-  }
-  return storage
-}
+import admin from 'firebase-admin'
 
 function getBucket() {
-  return getStorage().bucket(process.env.GCS_BUCKET_NAME ?? 'trankilo-agentfiles')
+  return admin.storage().bucket(process.env.GCS_BUCKET_NAME ?? `${process.env.FIREBASE_PROJECT_ID}.appspot.com`)
 }
 
 function objectPath(agentId: string, version: string): string {

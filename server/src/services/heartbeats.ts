@@ -1,4 +1,3 @@
-import { FieldValue } from 'firebase-admin/firestore'
 import { getDb } from './firebase'
 import type { HeartbeatEntry } from '../types'
 
@@ -12,8 +11,8 @@ export async function recordBeat(
   const ref = getDb().collection(COLLECTION).doc(agentId)
   const doc = await ref.get()
 
-  const newBeat: { timestamp: FirebaseFirestore.FieldValue; metadata: Record<string, unknown> } = {
-    timestamp: FieldValue.serverTimestamp(),
+  const newBeat: HeartbeatEntry = {
+    timestamp: new Date().toISOString(),
     metadata,
   }
 

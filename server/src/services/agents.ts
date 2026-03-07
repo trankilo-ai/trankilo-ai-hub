@@ -4,6 +4,15 @@ import type { Agent, AgentVersion } from '../types'
 
 const COLLECTION = 'agents'
 
+export async function listWorkspaceAgents(workspaceId: string): Promise<Agent[]> {
+  const snap = await getDb()
+    .collection(COLLECTION)
+    .where('workspaceId', '==', workspaceId)
+    .orderBy('updatedAt', 'desc')
+    .get()
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() } as Agent))
+}
+
 export async function listPublicAgents(): Promise<Agent[]> {
   const snap = await getDb()
     .collection(COLLECTION)
@@ -45,7 +54,7 @@ export async function createAgent(
   const now = FieldValue.serverTimestamp()
   const ref = await getDb()
     .collection(COLLECTION)
-    .add({ ...data, currentVersion: '0.0.0', createdAt: now, updatedAt: now })
+    .add({ ...data, currentVersion: '0.0.1', createdAt: now, updatedAt: now })
   const doc = await ref.get()
   return { id: doc.id, ...doc.data() } as Agent
 }

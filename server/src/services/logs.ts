@@ -11,7 +11,7 @@ export async function appendLog(
   const ref = getDb().collection(COLLECTION).doc(agentId)
   const doc = await ref.get()
 
-  const newEntry = { ...entry, timestamp: FieldValue.serverTimestamp() }
+  const newEntry = { ...entry, timestamp: new Date().toISOString() }
 
   if (!doc.exists) {
     await ref.set({ entries: [newEntry] })

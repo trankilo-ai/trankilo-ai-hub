@@ -9,6 +9,7 @@ import {
   createAgent,
   deleteAgent,
   updateAgentPrivacy,
+  addAgentVersion,
 } from '../services/agents'
 import { uploadAgentfile } from '../services/gcs'
 import { appendLog } from '../services/logs'
@@ -70,7 +71,13 @@ router.post(
     })
 
     const initialContent = `agent "${name}" {\n  version      = "0.0.1"\n  model        = "gpt-4o"\n  instructions = ""\n  tools        = []\n  skills       = []\n}\n`
-    await uploadAgentfile(agent.id, '0.0.1', initialContent)
+    try {
+      await uploadAgentfile(agent.id, '0.0.1', initialContent)
+      await addAgentVersion(agent.id, '0.0.1', req.user!.email ?? req.user!.uid)
+    } catch (storageErr) {
+      await deleteAgent(agent.id)
+      throw storageErr
+    }
 
     await appendLog(agent.id, {
       user: req.user!.name ?? req.user!.email ?? req.user!.uid,

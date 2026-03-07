@@ -65,6 +65,7 @@ export const logsApi = {
 export const workspacesApi = {
   list: () => request<Workspace[]>('/workspaces'),
   get: (id: string) => request<Workspace>(`/workspaces/${id}`),
+  agents: (id: string) => request<Agent[]>(`/workspaces/${id}/agents`),
   members: (id: string) => request<WorkspaceMember[]>(`/workspaces/${id}/members`),
   invites: (id: string) => request<WorkspaceInvite[]>(`/workspaces/${id}/invites`),
   deleteInvite: (workspaceId: string, inviteId: string) =>

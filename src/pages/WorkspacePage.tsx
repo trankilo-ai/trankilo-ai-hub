@@ -17,7 +17,11 @@ export function WorkspacePage() {
   const [showCreateAgent, setShowCreateAgent] = useState(false)
   const [newAgentName, setNewAgentName] = useState('')
   const [newAgentPlatform, setNewAgentPlatform] = useState('')
+  const [newAgentPlatformOther, setNewAgentPlatformOther] = useState('')
+  const [newAgentPrivacy, setNewAgentPrivacy] = useState<'private' | 'public'>('private')
   const [creating, setCreating] = useState(false)
+
+  const PLATFORMS = ['LangChain', 'LangGraph', 'CrewAI', 'AutoGen', 'OpenAI Assistants', 'Vertex AI', 'Bedrock', 'Hugging Face', 'Custom', 'Other']
 
   const currentRole: Role = workspace && user
     ? (workspace.members[user.uid] ?? 'Viewer')
@@ -29,8 +33,7 @@ export function WorkspacePage() {
     try {
       const ws = await workspacesApi.get(workspaceId)
       setWorkspace(ws)
-      const all = await agentsApi.list()
-      setAgents(all.filter((a) => a.workspaceId === workspaceId))
+      setAgents(await workspacesApi.agents(workspaceId))
     } catch (e) {
       setError((e as Error).message)
     } finally {
@@ -47,13 +50,15 @@ export function WorkspacePage() {
     try {
       await agentsApi.create({
         name: newAgentName,
-        platform: newAgentPlatform,
+        platform: newAgentPlatform === 'Other' ? newAgentPlatformOther : newAgentPlatform,
         description: '',
-        privacy: 'private',
+        privacy: newAgentPrivacy,
         workspaceId,
       })
       setNewAgentName('')
       setNewAgentPlatform('')
+      setNewAgentPlatformOther('')
+      setNewAgentPrivacy('private')
       setShowCreateAgent(false)
       await load()
     } catch (e) {
@@ -96,15 +101,6 @@ export function WorkspacePage() {
         )}
       </div>
 
-      {workspace && user && (
-        <WorkspaceMembers
-          workspace={workspace}
-          currentUserId={user.uid}
-          currentRole={currentRole}
-          onUpdate={load}
-        />
-      )}
-
       <div>
         <h2 className="text-sm font-semibold text-zinc-700 mb-4">Agents ({agents.length})</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -113,6 +109,15 @@ export function WorkspacePage() {
           ))}
         </div>
       </div>
+
+      {workspace && user && (
+        <WorkspaceMembers
+          workspace={workspace}
+          currentUserId={user.uid}
+          currentRole={currentRole}
+          onUpdate={load}
+        />
+      )}
 
       {showCreateAgent && (
         <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50">
@@ -127,18 +132,56 @@ export function WorkspacePage() {
                 required
                 className="input"
               />
-              <input
-                type="text"
-                placeholder="Platform (e.g. LangChain)"
+              <select
                 value={newAgentPlatform}
-                onChange={(e) => setNewAgentPlatform(e.target.value)}
+                onChange={(e) => { setNewAgentPlatform(e.target.value); setNewAgentPlatformOther('') }}
                 className="input"
-              />
+              >
+                <option value="">Select platform…</option>
+                {PLATFORMS.map((p) => <option key={p} value={p}>{p}</option>)}
+              </select>
+              {newAgentPlatform === 'Other' && (
+                <input
+                  type="text"
+                  placeholder="Specify platform"
+                  value={newAgentPlatformOther}
+                  onChange={(e) => setNewAgentPlatformOther(e.target.value)}
+                  required
+                  className="input"
+                />
+              )}
+              <div className="grid grid-cols-2 gap-2">
+                {(['private', 'public'] as const).map((option) => (
+                  <button
+                    key={option}
+                    type="button"
+                    onClick={() => setNewAgentPrivacy(option)}
+                    className={`flex items-center gap-2 px-3 py-2.5 rounded-lg border text-sm font-medium transition-colors ${
+                      newAgentPrivacy === option
+                        ? option === 'private'
+                          ? 'border-zinc-900 bg-zinc-900 text-white'
+                          : 'border-emerald-600 bg-emerald-50 text-emerald-700'
+                        : 'border-zinc-200 bg-white text-zinc-500 hover:border-zinc-300'
+                    }`}
+                  >
+                    {option === 'private' ? (
+                      <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                      </svg>
+                    ) : (
+                      <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                    )}
+                    {option === 'private' ? 'Private' : 'Public'}
+                  </button>
+                ))}
+              </div>
               <div className="flex justify-end gap-2">
-                <button type="button" onClick={() => setShowCreateAgent(false)} className="btn-secondary">
+                <button type="button" onClick={() => { setShowCreateAgent(false); setNewAgentPlatform(''); setNewAgentPlatformOther(''); setNewAgentPrivacy('private') }} className="btn-secondary">
                   Cancel
                 </button>
-                <button type="submit" disabled={creating} className="btn-primary">
+                <button type="submit" disabled={creating || !newAgentName.trim() || !newAgentPlatform || (newAgentPlatform === 'Other' && !newAgentPlatformOther.trim())} className="btn-primary">
                   {creating ? '🦥 Creating…' : 'Create'}
                 </button>
               </div>
