@@ -1,0 +1,77 @@
+import { Router } from 'express'
+import { authMiddleware } from '../middleware/auth'
+import { requireAgentWorkspaceRole } from '../middleware/rbac'
+import { autoLog } from '../middleware/logger'
+import { getAgent, updateAgentVersion, addAgentVersion, listAgentVersions } from '../services/agents'
+import { uploadAgentfile, downloadAgentfile } from '../services/gcs'
+
+const router = Router({ mergeParams: true })
+
+function parseVersion(hcl: string): string | null {
+  const match = hcl.match(/version\s*=\s*"([^"]+)"/)
+  return match ? match[1] : null
+}
+
+router.get('/', authMiddleware, async (req, res) => {
+  const agent = await getAgent(req.params.id)
+  if (!agent) {
+    res.status(404).json({ message: 'Agent not found' })
+    return
+  }
+
+  try {
+    const content = await downloadAgentfile(agent.id, agent.currentVersion)
+    res.json({ content })
+  } catch {
+    res.status(404).json({ message: 'Agentfile not found in storage' })
+  }
+})
+
+router.put(
+  '/',
+  authMiddleware,
+  requireAgentWorkspaceRole('Editor'),
+  autoLog(() => 'Agentfile pushed'),
+  async (req, res) => {
+    const { content } = req.body as { content?: string }
+    if (!content) {
+      res.status(400).json({ message: 'content required' })
+      return
+    }
+
+    const version = parseVersion(content)
+    if (!version) {
+      res.status(400).json({ message: 'Agentfile must contain a version field' })
+      return
+    }
+
+    const agent = await getAgent(req.params.id)
+    if (!agent) {
+      res.status(404).json({ message: 'Agent not found' })
+      return
+    }
+
+    await uploadAgentfile(agent.id, version, content)
+    await addAgentVersion(agent.id, version, req.user!.email ?? req.user!.uid)
+    await updateAgentVersion(agent.id, version)
+
+    res.json({ version })
+  },
+)
+
+router.get('/versions', authMiddleware, async (req, res) => {
+  const versions = await listAgentVersions(req.params.id)
+  res.json(versions)
+})
+
+router.get('/versions/:version', authMiddleware, async (req, res) => {
+  const { id, version } = req.params
+  try {
+    const content = await downloadAgentfile(id, version)
+    res.json({ content })
+  } catch {
+    res.status(404).json({ message: `Version ${version} not found` })
+  }
+})
+
+export default router
