@@ -44,11 +44,13 @@ router.post(
   '/',
   authMiddleware,
   async (req, res) => {
-    const { name, platform, workspaceId, content } = req.body as {
+    const { name, platform, workspaceId, content, privacy, description } = req.body as {
       name: string
       platform?: string
       workspaceId: string
       content?: string
+      privacy?: 'public' | 'private'
+      description?: string
     }
 
     if (!name || !workspaceId) {
@@ -58,14 +60,16 @@ router.post(
 
     const resolvedPlatform = platform ?? (content ? (parseHclField(content, 'platform') ?? '') : '')
     const initialVersion = content ? (parseHclField(content, 'version') ?? '0.0.1') : '0.0.1'
+    const resolvedPrivacy = privacy === 'public' || privacy === 'private' ? privacy : 'private'
 
     const agent = await createAgent({
       name,
       platform: resolvedPlatform,
-      description: '',
-      privacy: 'private',
+      description: description ?? '',
+      privacy: resolvedPrivacy,
       workspaceId,
       ownerId: req.user!.uid,
+      currentVersion: initialVersion,
     })
 
     const agentfileContent = content ?? `agent "${name}" {\n  version      = "${initialVersion}"\n  platform     = "${resolvedPlatform}"\n  model        = "gpt-4o"\n  instructions = ""\n}\n`

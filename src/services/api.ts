@@ -45,7 +45,14 @@ export const agentsApi = {
   search: (q: string, platform?: string) =>
     request<Agent[]>(`/agent/search?q=${encodeURIComponent(q)}${platform ? `&platform=${encodeURIComponent(platform)}` : ''}`),
   get: (id: string) => request<Agent>(`/agent/${id}`),
-  create: (data: { name: string; platform?: string; workspaceId: string; content?: string }) =>
+  create: (data: {
+    name: string
+    platform?: string
+    workspaceId: string
+    description?: string
+    privacy?: 'public' | 'private'
+    content?: string
+  }) =>
     request<Agent>('/agent', { method: 'POST', body: JSON.stringify(data) }),
   delete: (id: string) => request<void>(`/agent/${id}`, { method: 'DELETE' }),
   updatePrivacy: (id: string, privacy: 'public' | 'private') =>

@@ -49,12 +49,14 @@ export async function getAgent(id: string): Promise<Agent | null> {
 }
 
 export async function createAgent(
-  data: Omit<Agent, 'id' | 'createdAt' | 'updatedAt' | 'currentVersion'>,
+  data: Omit<Agent, 'id' | 'createdAt' | 'updatedAt'> & { currentVersion?: string },
 ): Promise<Agent> {
   const now = FieldValue.serverTimestamp()
+  const currentVersion = data.currentVersion ?? '0.0.1'
+  const { currentVersion: _cv, ...rest } = data
   const ref = await getDb()
     .collection(COLLECTION)
-    .add({ ...data, currentVersion: '0.0.1', createdAt: now, updatedAt: now })
+    .add({ ...rest, currentVersion, createdAt: now, updatedAt: now })
   const doc = await ref.get()
   return { id: doc.id, ...doc.data() } as Agent
 }
